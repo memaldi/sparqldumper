@@ -20,10 +20,6 @@ public class Main {
 	private static SessionFactory sessionFactory;
 	private static BufferedReader in = new BufferedReader(new InputStreamReader(System.in)); 
 	
-	private void setUp() {
-		
-	}
-	
     public static void main( String[] args )
     {
     	sessionFactory = new Configuration()
@@ -65,7 +61,40 @@ public class Main {
         	settings = settings_list.get(0);
         }
         
+        boolean exit = false;
+        
+        while (!exit) {
+        	System.out.println("a) Create a new dump task");
+        	System.out.println("b) Delete all tasks");
+        	System.out.println("c) Show tasks");
+        	System.out.println("d) Resume task");
+        	System.out.println("e) Exit");
+        	System.out.print("Select your choice: ");
+        	try {
+				String option = in.readLine();
+				switch(option) {
+					case "a":
+						create_task();
+						break;
+					case "e":
+						exit = true;
+						break;
+					default:
+						System.out.println("Wrong option!");
+						break;
+				}
+			} catch (IOException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+        }
+        
+        System.out.println("Bye!");
         session.close();
 
     }
+
+	private static void create_task() {
+		
+	}
 }
