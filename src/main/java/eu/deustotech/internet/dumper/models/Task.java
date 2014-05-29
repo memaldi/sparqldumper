@@ -18,8 +18,8 @@ public class Task {
 
     private String endpoint;
     private String graph;
-    private Date start_time;
-    private Date end_time;
+    private Date startTime;
+    private Date endTime;
     private Date paused_since;
     private Long offset;
     private String status;
@@ -56,20 +56,20 @@ public class Task {
 
 	@Temporal(TemporalType.DATE)
 	public Date getStart_time() {
-		return start_time;
+		return startTime;
 	}
 
 	public void setStart_time(Date start_time) {
-		this.start_time = start_time;
+		this.startTime = start_time;
 	}
 
 	@Temporal(TemporalType.DATE)
 	public Date getEnd_time() {
-		return end_time;
+		return endTime;
 	}
 
 	public void setEnd_time(Date end_time) {
-		this.end_time = end_time;
+		this.endTime = end_time;
 	}
 
 	@Temporal(TemporalType.DATE)
