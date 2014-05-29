@@ -9,7 +9,13 @@ import java.util.List;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
-
+import org.quartz.JobBuilder;
+import org.quartz.JobDetail;
+import org.quartz.Trigger;
+import org.quartz.TriggerBuilder;
+import eu.deustotech.internet.dumper.jobmanager.JobManager;
+import eu.deustotech.internet.dumper.jobmanager.JobManagerFactory;
+import eu.deustotech.internet.dumper.jobmanager.jobs.LaunchJob;
 import eu.deustotech.internet.dumper.models.Settings;
 import eu.deustotech.internet.dumper.models.Task;
 
@@ -22,6 +28,7 @@ public class Main {
 	private static SessionFactory sessionFactory;
 	private static BufferedReader in = new BufferedReader(
 			new InputStreamReader(System.in));
+	private static JobManagerFactory taskManagerFactory = new JobManagerFactory();
 
 	public static void main(String[] args) {
 		sessionFactory = new Configuration().configure() // configures settings
@@ -82,6 +89,9 @@ public class Main {
 				case "a":
 					create_task();
 					break;
+				case "c":
+					show_tasks();
+					break;
 				case "e":
 					exit = true;
 					break;
@@ -97,7 +107,8 @@ public class Main {
 
 		System.out.println("Bye!");
 		session.close();
-
+		tearDown();
+		System.exit(0);
 	}
 
 	private static void show_tasks() {
@@ -107,10 +118,11 @@ public class Main {
 		for (Task task : task_list) {
 			System.out
 					.println("id | SPARQL endpoint | Named graph | Status | Start time | End time | Paused since | Offset");
-			System.out.format("%l | %s | %s | %s | %s | %s | %s | %l",
-					task.getId(), task.getEndpoint(), task.getGraph(),
+			System.out.format("%s | %s | %s | %s | %s | %s | %s | %s",
+					task.getId().toString(), task.getEndpoint(), task.getGraph(),
 					task.getStatus(), task.getStart_time(), task.getEnd_time(),
-					task.getPaused_since(), task.getOffset());
+					task.getPaused_since(), task.getOffset().toString());
+			System.out.println();
 		}
 		session.close();
 	}
@@ -135,12 +147,23 @@ public class Main {
 
 			session.beginTransaction();
 			session.save(task);
-
+			session.getTransaction().commit();
+			
+			JobDetail job = JobBuilder.newJob(LaunchJob.class).withIdentity("launchJob-" + task.getId().toString(), "dumper").build();
+			Trigger trigger = TriggerBuilder.newTrigger().withIdentity("trigger-" + task.getId().toString(), "dumper").startNow().build();
+			
+			JobManager jobManager = taskManagerFactory.getJobManager();
+			jobManager.scheduleJob(job, trigger);
+			
 			session.close();
 
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+	}
+	
+	private static void tearDown() {
+		taskManagerFactory.close();
 	}
 }
