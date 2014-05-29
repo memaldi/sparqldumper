@@ -26,6 +26,7 @@ import eu.deustotech.internet.dumper.models.Task;
 public class Main {
 
 	private static SessionFactory sessionFactory;
+	private static Session session;
 	private static BufferedReader in = new BufferedReader(
 			new InputStreamReader(System.in));
 	private static JobManagerFactory taskManagerFactory = new JobManagerFactory();
@@ -36,10 +37,10 @@ public class Main {
 															// hibernate.cfg.xml
 				.buildSessionFactory();
 
+		session = sessionFactory.openSession();
 		System.out
 				.println("Welcome to external SPARQL endpoint to Virtuoso dumper.");
 
-		Session session = sessionFactory.openSession();
 		List<Settings> settings_list = (List<Settings>) session.createQuery(
 				"from Settings").list();
 		Settings settings = null;
@@ -112,26 +113,20 @@ public class Main {
 	}
 
 	private static void show_tasks() {
-		Session session = sessionFactory.openSession();
-
 		List<Task> task_list = session.createQuery("from Task").list();
+		System.out
+				.println("id | SPARQL endpoint | Named graph | Status | Start time | End time | Paused since | Offset");
 		for (Task task : task_list) {
-			System.out
-					.println("id | SPARQL endpoint | Named graph | Status | Start time | End time | Paused since | Offset");
-			System.out.format("%s | %s | %s | %s | %s | %s | %s | %s",
-					task.getId().toString(), task.getEndpoint(), task.getGraph(),
+			System.out.format("%s | %s | %s | %s | %s | %s | %s | %s", task
+					.getId().toString(), task.getEndpoint(), task.getGraph(),
 					task.getStatus(), task.getStart_time(), task.getEnd_time(),
 					task.getPaused_since(), task.getOffset().toString());
 			System.out.println();
 		}
-		session.close();
 	}
 
 	private static void create_task() {
 		try {
-
-			Session session = sessionFactory.openSession();
-
 			System.out.println("Creating a new task:");
 			System.out.print("Source SPARQL endpoint: ");
 			String endpoint = in.readLine();
@@ -148,21 +143,27 @@ public class Main {
 			session.beginTransaction();
 			session.save(task);
 			session.getTransaction().commit();
-			
-			JobDetail job = JobBuilder.newJob(LaunchJob.class).withIdentity("launchJob-" + task.getId().toString(), "dumper").build();
-			Trigger trigger = TriggerBuilder.newTrigger().withIdentity("trigger-" + task.getId().toString(), "dumper").startNow().build();
-			
+
+			JobDetail job = JobBuilder
+					.newJob(LaunchJob.class)
+					.withIdentity("launchJob-" + task.getId().toString(),
+							"dumper").build();
+			Trigger trigger = TriggerBuilder
+					.newTrigger()
+					.withIdentity("trigger-" + task.getId().toString(),
+							"dumper").startNow().build();
+
+			job.getJobDataMap().put(LaunchJob.TASK_ID, task.getId());
+			job.getJobDataMap().put(LaunchJob.SESSION, session);
 			JobManager jobManager = taskManagerFactory.getJobManager();
 			jobManager.scheduleJob(job, trigger);
-			
-			session.close();
 
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
-	
+
 	private static void tearDown() {
 		taskManagerFactory.close();
 	}
