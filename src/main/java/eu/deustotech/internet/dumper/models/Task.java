@@ -11,9 +11,14 @@ import javax.persistence.TemporalType;
 
 import org.hibernate.annotations.GenericGenerator;
 
+
 @Entity
 @Table(name="Tasks")
 public class Task {
+	
+	public static String RUNNING = "RUNNING";
+	public static String PAUSED = "PAUSED";
+	
     private Long id;
 
     private String endpoint;

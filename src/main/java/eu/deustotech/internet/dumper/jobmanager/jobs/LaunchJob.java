@@ -1,6 +1,5 @@
 package eu.deustotech.internet.dumper.jobmanager.jobs;
 
-import java.io.IOException;
 import java.io.StringWriter;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -8,18 +7,24 @@ import java.util.Date;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpEntity;
-import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
 import org.hibernate.Session;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.quartz.Job;
 import org.quartz.JobDataMap;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 
+import virtuoso.jena.driver.VirtGraph;
+
+import com.hp.hpl.jena.graph.Node;
+import com.hp.hpl.jena.graph.Triple;
+import eu.deustotech.internet.dumper.models.Settings;
 import eu.deustotech.internet.dumper.models.Task;
 
 public class LaunchJob implements Job {
@@ -38,14 +43,31 @@ public class LaunchJob implements Job {
 				.uniqueResult();
 		session.beginTransaction();
 		task.setStart_time(new Date());
-		task.setStatus("RUNNING");
+		task.setStatus(Task.RUNNING);
 		session.update(task);
 		session.getTransaction().commit();
 
+		Settings settings = (Settings) session.createQuery("from Settings").list().get(0);
+		
 		String endpoint = task.getEndpoint();
 		long offset = task.getOffset();
 		boolean end = false;
-		while (!end) {
+		boolean paused = false;
+		
+		URI virtUri = null;
+		try {
+			virtUri = new URIBuilder().setScheme("jdbc:virtuoso").setHost(settings.getHost()).setPort(Integer.parseInt(settings.getPort())).build();
+		} catch (NumberFormatException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		} catch (URISyntaxException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		VirtGraph graph = new VirtGraph (task.getGraph(), virtUri.toString(), settings.getUser(), settings.getPassword());
+		
+		while (!end && !paused) {
+			
 			String query = "SELECT DISTINCT * WHERE {?s ?p ?o} LIMIT 1000 OFFSET " + offset;
 	
 			CloseableHttpClient httpclient = HttpClients.createDefault();
@@ -57,23 +79,65 @@ public class LaunchJob implements Job {
 				CloseableHttpResponse response = httpclient.execute(httpGet);
 				
 				HttpEntity entity = response.getEntity();
-				StringWriter writer = new StringWriter();
-				IOUtils.copy(entity.getContent(), writer);
+				if (response.getStatusLine().getStatusCode() == 200) {
+					StringWriter writer = new StringWriter();
+					IOUtils.copy(entity.getContent(), writer);
+					try {
+						JSONObject jsonObj = new JSONObject(writer.toString());
+						JSONArray bindings = jsonObj.getJSONObject("results").getJSONArray("bindings");
+						
+						if (bindings.length() > 0) {
+						
+							for (int i = 0; i < bindings.length(); i++) {
+								JSONObject item = bindings.getJSONObject(i);
+								String s = item.getJSONObject("s").getString("value");
+								String p = item.getJSONObject("p").getString("value");
+								String o = item.getJSONObject("o").getString("value");
+								
+								Node subject = Node.createURI(s);
+								Node predicate = Node.createURI(p);
+								Node object = null;
+								
+								if (item.getJSONObject("o").getString("type").equals("uri")) {
+									object = Node.createURI(o);
+									
+								} else {
+									object = Node.createLiteral(o);
+								}
+
+								
+								Triple triple = new Triple(subject, predicate, object);
+								graph.add(triple);
+							}
+						} else {
+							end = true;
+						}
+					} catch (Exception e) {
+						response.close();
+						throw new Exception();
+					}
+				} else {
+					task.setPaused_since(new Date());
+					task.setOffset(offset);
+					task.setStatus(Task.PAUSED);
+					paused = true;
+					session.beginTransaction();
+					session.update(task);
+					session.getTransaction().commit();
+				}
 				
-				System.out.println(writer.toString());
-				response.close();
-			} catch (URISyntaxException e1) {
-				// TODO Auto-generated catch block
-				e1.printStackTrace();
-			} catch (ClientProtocolException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
-			} catch (IOException e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+				response.close(); 
+			} catch (Exception e) {
+				task.setPaused_since(new Date());
+				task.setOffset(offset);
+				task.setStatus(Task.PAUSED);
+				paused = true;
+				session.beginTransaction();
+				session.update(task);
+				session.getTransaction().commit();
 			}
-			end = true;
 		}
+		graph.close();
 		
 
 	}
