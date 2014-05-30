@@ -11,8 +11,10 @@ import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
 import org.quartz.JobBuilder;
 import org.quartz.JobDetail;
+import org.quartz.SimpleScheduleBuilder;
 import org.quartz.Trigger;
 import org.quartz.TriggerBuilder;
+
 import eu.deustotech.internet.dumper.jobmanager.JobManager;
 import eu.deustotech.internet.dumper.jobmanager.JobManagerFactory;
 import eu.deustotech.internet.dumper.jobmanager.jobs.LaunchJob;
@@ -81,12 +83,12 @@ public class Main {
 			System.out.println("a) Create a new dump task");
 			System.out.println("b) Delete all tasks");
 			System.out.println("c) Show tasks");
-			System.out.println("d) Resume task");
+			//System.out.println("d) Resume task");
 			System.out.println("e) Exit");
 			System.out.print("Select your choice: ");
 			try {
 				String option = in.readLine();
-				switch (option) {
+				switch (option.toLowerCase()) {
 				case "a":
 					create_task();
 					break;
@@ -96,9 +98,9 @@ public class Main {
 				case "c":
 					show_tasks();
 					break;
-				case "d":
+				/*case "d":
 					resume_task();
-					break;
+					break;*/
 				case "e":
 					exit = true;
 					break;
@@ -118,17 +120,19 @@ public class Main {
 		System.exit(0);
 	}
 
-	private static void resume_task() {
+	/*private static void resume_task() {
 		System.out.print("Task id: ");
 		try {
 			String id = in.readLine();
 			Task task = null;
-			task = (Task) session.createQuery("from Task as task where task.id=" + id).uniqueResult();
+			task = (Task) session.createQuery(
+					"from Task as task where task.id=" + id).uniqueResult();
 			if (task != null) {
-				if (task.getStatus().equals(Task.PAUSED)){
+				if (task.getStatus().equals(Task.PAUSED)) {
 					JobDetail job = JobBuilder
 							.newJob(LaunchJob.class)
-							.withIdentity("launchJob-" + task.getId().toString(),
+							.withIdentity(
+									"launchJob-" + task.getId().toString(),
 									"dumper").build();
 					Trigger trigger = TriggerBuilder
 							.newTrigger()
@@ -149,8 +153,7 @@ public class Main {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		
-	}
+	}*/
 
 	private static void delete_tasks() {
 		List<Task> taskList = session.createQuery("from Task").list();
@@ -188,7 +191,8 @@ public class Main {
 			task.setGraph(graph);
 			task.setOffset((long) 0);
 			task.setStart_time(new Date());
-
+			task.setStatus(Task.PAUSED);
+			
 			session.beginTransaction();
 			session.save(task);
 			session.getTransaction().commit();
@@ -200,7 +204,11 @@ public class Main {
 			Trigger trigger = TriggerBuilder
 					.newTrigger()
 					.withIdentity("trigger-" + task.getId().toString(),
-							"dumper").startNow().build();
+							"dumper")
+					.startNow()
+					.withSchedule(
+							SimpleScheduleBuilder.simpleSchedule()
+									.withIntervalInSeconds(15).repeatForever()).build();
 
 			job.getJobDataMap().put(LaunchJob.TASK_ID, task.getId());
 			job.getJobDataMap().put(LaunchJob.SESSION, session);

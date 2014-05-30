@@ -1,6 +1,7 @@
 package eu.deustotech.internet.dumper.jobmanager;
 
 import org.quartz.JobDetail;
+import org.quartz.JobKey;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.Trigger;
@@ -33,6 +34,15 @@ public class JobManager {
 	public void scheduleJob(JobDetail job, Trigger trigger) {
 		try {
 			this.scheduler.scheduleJob(job, trigger);
+		} catch (SchedulerException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
+	public void deleteJob(JobKey key) {
+		try {
+			this.scheduler.deleteJob(key);
 		} catch (SchedulerException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

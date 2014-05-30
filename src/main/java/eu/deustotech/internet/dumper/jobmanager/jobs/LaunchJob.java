@@ -19,11 +19,14 @@ import org.quartz.Job;
 import org.quartz.JobDataMap;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
+import org.quartz.Scheduler;
+import org.quartz.SchedulerException;
 
 import virtuoso.jena.driver.VirtGraph;
 
 import com.hp.hpl.jena.graph.Node;
 import com.hp.hpl.jena.graph.Triple;
+
 import eu.deustotech.internet.dumper.models.Settings;
 import eu.deustotech.internet.dumper.models.Task;
 
@@ -34,94 +37,110 @@ public class LaunchJob implements Job {
 
 	@Override
 	public void execute(JobExecutionContext context)
-			throws JobExecutionException {
-		// TODO Auto-generated method stub
+			throws JobExecutionException {		
+		
 		JobDataMap data = context.getJobDetail().getJobDataMap();
 		Session session = (Session) data.get(SESSION);
 		Task task = (Task) session.createQuery(
 				"from Task as task where task.id=" + data.getLong(TASK_ID))
 				.uniqueResult();
-		session.beginTransaction();
-		task.setStart_time(new Date());
-		task.setStatus(Task.RUNNING);
-		session.update(task);
-		session.getTransaction().commit();
+		System.out.println("Hey!");
+		if (task.getStatus().equals(Task.PAUSED)) {
 
-		Settings settings = (Settings) session.createQuery("from Settings").list().get(0);
-		
-		String endpoint = task.getEndpoint();
-		long offset = task.getOffset();
-		boolean end = false;
-		boolean paused = false;
-		
-		URI virtUri = null;
-		try {
-			virtUri = new URIBuilder().setScheme("jdbc:virtuoso").setHost(settings.getHost()).setPort(Integer.parseInt(settings.getPort())).build();
-		} catch (NumberFormatException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		} catch (URISyntaxException e1) {
-			// TODO Auto-generated catch block
-			e1.printStackTrace();
-		}
-		VirtGraph graph = new VirtGraph (task.getGraph(), virtUri.toString(), settings.getUser(), settings.getPassword());
-		
-		while (!end && !paused) {
-			
-			String query = "SELECT DISTINCT * WHERE {?s ?p ?o} LIMIT 1000 OFFSET " + offset;
+			session.beginTransaction();
+			task.setStart_time(new Date());
+			task.setStatus(Task.RUNNING);
+			session.update(task);
+			session.getTransaction().commit();
 	
-			CloseableHttpClient httpclient = HttpClients.createDefault();
+			Settings settings = (Settings) session.createQuery("from Settings").list().get(0);
+			
+			String endpoint = task.getEndpoint();
+			long offset = task.getOffset();
+			boolean end = false;
+			boolean paused = false;
+			
+			URI virtUri = null;
 			try {
-				URI uri = new URIBuilder().setScheme("http").setHost(endpoint.replace("http://", ""))
-						.setParameter("query", query).setParameter("output", "json")
-						.setParameter("format", "json").build();
-				HttpGet httpGet = new HttpGet(uri);
-				CloseableHttpResponse response = httpclient.execute(httpGet);
+				virtUri = new URIBuilder().setScheme("jdbc:virtuoso").setHost(settings.getHost()).setPort(Integer.parseInt(settings.getPort())).build();
+			} catch (NumberFormatException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			} catch (URISyntaxException e1) {
+				// TODO Auto-generated catch block
+				e1.printStackTrace();
+			}
+			VirtGraph graph = new VirtGraph (task.getGraph(), virtUri.toString(), settings.getUser(), settings.getPassword());
+			
+			while (!end && !paused) {
 				
-				HttpEntity entity = response.getEntity();
-				if (response.getStatusLine().getStatusCode() == 200) {
-					StringWriter writer = new StringWriter();
-					IOUtils.copy(entity.getContent(), writer);
-					try {
-						JSONObject jsonObj = new JSONObject(writer.toString());
-						JSONArray bindings = jsonObj.getJSONObject("results").getJSONArray("bindings");
-						
-						if (bindings.length() > 0) {
-						
-							for (int i = 0; i < bindings.length(); i++) {
-								JSONObject item = bindings.getJSONObject(i);
-								String s = item.getJSONObject("s").getString("value");
-								String p = item.getJSONObject("p").getString("value");
-								String o = item.getJSONObject("o").getString("value");
-								
-								Node subject = Node.createURI(s);
-								Node predicate = Node.createURI(p);
-								Node object = null;
-								
-								if (item.getJSONObject("o").getString("type").equals("uri")) {
-									object = Node.createURI(o);
+				String query = "SELECT DISTINCT * WHERE {?s ?p ?o} LIMIT 1000 OFFSET " + offset;
+		
+				CloseableHttpClient httpclient = HttpClients.createDefault();
+				try {
+					URI uri = new URIBuilder().setScheme("http").setHost(endpoint.replace("http://", ""))
+							.setParameter("query", query).setParameter("output", "json")
+							.setParameter("format", "json").build();
+					HttpGet httpGet = new HttpGet(uri);
+					CloseableHttpResponse response = httpclient.execute(httpGet);
+					
+					HttpEntity entity = response.getEntity();
+					if (response.getStatusLine().getStatusCode() == 200) {
+						StringWriter writer = new StringWriter();
+						IOUtils.copy(entity.getContent(), writer);
+						try {
+							JSONObject jsonObj = new JSONObject(writer.toString());
+							JSONArray bindings = jsonObj.getJSONObject("results").getJSONArray("bindings");
+							
+							if (bindings.length() > 0) {
+							
+								for (int i = 0; i < bindings.length(); i++) {
+									JSONObject item = bindings.getJSONObject(i);
+									String s = item.getJSONObject("s").getString("value");
+									String p = item.getJSONObject("p").getString("value");
+									String o = item.getJSONObject("o").getString("value");
 									
-								} else {
-									object = Node.createLiteral(o);
+									Node subject = Node.createURI(s);
+									Node predicate = Node.createURI(p);
+									Node object = null;
+									
+									if (item.getJSONObject("o").getString("type").equals("uri")) {
+										object = Node.createURI(o);
+										
+									} else {
+										object = Node.createLiteral(o);
+									}
+	
+									
+									Triple triple = new Triple(subject, predicate, object);
+									graph.add(triple);
 								}
-
-								
-								Triple triple = new Triple(subject, predicate, object);
-								graph.add(triple);
+							} else {
+								end = true;
+								task.setEnd_time(new Date());
+								task.setStatus(Task.DONE);
+								session.beginTransaction();
+								session.update(task);
+								session.getTransaction().commit();
 							}
-						} else {
-							end = true;
-							task.setEnd_time(new Date());
-							task.setStatus(Task.DONE);
-							session.beginTransaction();
-							session.update(task);
-							session.getTransaction().commit();
+						} catch (Exception e) {
+							
+							System.out.println(e);
+							response.close();
+							throw new Exception();
 						}
-					} catch (Exception e) {
-						response.close();
-						throw new Exception();
+					} else {
+						task.setPaused_since(new Date());
+						task.setOffset(offset);
+						task.setStatus(Task.PAUSED);
+						paused = true;
+						session.beginTransaction();
+						session.update(task);
+						session.getTransaction().commit();
 					}
-				} else {
+					
+					response.close(); 
+				} catch (Exception e) {
 					task.setPaused_since(new Date());
 					task.setOffset(offset);
 					task.setStatus(Task.PAUSED);
@@ -130,21 +149,18 @@ public class LaunchJob implements Job {
 					session.update(task);
 					session.getTransaction().commit();
 				}
-				
-				response.close(); 
-			} catch (Exception e) {
-				task.setPaused_since(new Date());
-				task.setOffset(offset);
-				task.setStatus(Task.PAUSED);
-				paused = true;
-				session.beginTransaction();
-				session.update(task);
-				session.getTransaction().commit();
+				offset += 1000;
 			}
-			offset += 1000;
-		}
-		graph.close();
+			graph.close();
 		
-
+		} else if (task.getStatus().equals(Task.DONE)) {
+			Scheduler scheduler = context.getScheduler();
+			try {
+				scheduler.deleteJob(context.getJobDetail().getKey());
+			} catch (SchedulerException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
 	}
 }
