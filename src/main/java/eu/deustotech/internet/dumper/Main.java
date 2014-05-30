@@ -90,6 +90,9 @@ public class Main {
 				case "a":
 					create_task();
 					break;
+				case "b":
+					delete_tasks();
+					break;
 				case "c":
 					show_tasks();
 					break;
@@ -110,6 +113,16 @@ public class Main {
 		session.close();
 		tearDown();
 		System.exit(0);
+	}
+
+	private static void delete_tasks() {
+		List<Task> taskList = session.createQuery("from Task").list();
+		session.beginTransaction();
+		for (Task task : taskList) {
+			session.delete(task);
+		}
+		session.getTransaction().commit();
+		
 	}
 
 	private static void show_tasks() {
