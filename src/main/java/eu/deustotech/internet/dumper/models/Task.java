@@ -18,6 +18,7 @@ public class Task {
 	
 	public static String RUNNING = "RUNNING";
 	public static String PAUSED = "PAUSED";
+	public static String DONE = "DONE";
 	
     private Long id;
 

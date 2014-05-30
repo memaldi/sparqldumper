@@ -111,6 +111,11 @@ public class LaunchJob implements Job {
 							}
 						} else {
 							end = true;
+							task.setEnd_time(new Date());
+							task.setStatus(Task.DONE);
+							session.beginTransaction();
+							session.update(task);
+							session.getTransaction().commit();
 						}
 					} catch (Exception e) {
 						response.close();
@@ -136,6 +141,7 @@ public class LaunchJob implements Job {
 				session.update(task);
 				session.getTransaction().commit();
 			}
+			offset += 1000;
 		}
 		graph.close();
 		

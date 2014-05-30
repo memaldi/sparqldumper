@@ -96,6 +96,9 @@ public class Main {
 				case "c":
 					show_tasks();
 					break;
+				case "d":
+					resume_task();
+					break;
 				case "e":
 					exit = true;
 					break;
@@ -115,6 +118,40 @@ public class Main {
 		System.exit(0);
 	}
 
+	private static void resume_task() {
+		System.out.print("Task id: ");
+		try {
+			String id = in.readLine();
+			Task task = null;
+			task = (Task) session.createQuery("from Task as task where task.id=" + id).uniqueResult();
+			if (task != null) {
+				if (task.getStatus().equals(Task.PAUSED)){
+					JobDetail job = JobBuilder
+							.newJob(LaunchJob.class)
+							.withIdentity("launchJob-" + task.getId().toString(),
+									"dumper").build();
+					Trigger trigger = TriggerBuilder
+							.newTrigger()
+							.withIdentity("trigger-" + task.getId().toString(),
+									"dumper").startNow().build();
+
+					job.getJobDataMap().put(LaunchJob.TASK_ID, task.getId());
+					job.getJobDataMap().put(LaunchJob.SESSION, session);
+					JobManager jobManager = taskManagerFactory.getJobManager();
+					jobManager.scheduleJob(job, trigger);
+				} else {
+					System.out.println("This task is not paused!");
+				}
+			} else {
+				System.out.println("Missing task!");
+			}
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+	}
+
 	private static void delete_tasks() {
 		List<Task> taskList = session.createQuery("from Task").list();
 		session.beginTransaction();
@@ -122,7 +159,6 @@ public class Main {
 			session.delete(task);
 		}
 		session.getTransaction().commit();
-		
 	}
 
 	private static void show_tasks() {
