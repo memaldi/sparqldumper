@@ -1,4 +1,4 @@
-package eu.deustotech.internet.dumper.jobmanager.jobs;
+package eu.deustotech.internet.dumper.jobs;
 
 import java.io.StringWriter;
 import java.net.URI;
@@ -44,7 +44,6 @@ public class LaunchJob implements Job {
 		Task task = (Task) session.createQuery(
 				"from Task as task where task.id=" + data.getLong(TASK_ID))
 				.uniqueResult();
-		System.out.println("Hey!");
 		if (task.getStatus().equals(Task.PAUSED)) {
 
 			session.beginTransaction();
@@ -124,8 +123,6 @@ public class LaunchJob implements Job {
 								session.getTransaction().commit();
 							}
 						} catch (Exception e) {
-							
-							System.out.println(e);
 							response.close();
 							throw new Exception();
 						}

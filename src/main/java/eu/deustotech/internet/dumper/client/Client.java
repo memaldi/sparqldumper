@@ -1,4 +1,4 @@
-package eu.deustotech.internet.dumper;
+package eu.deustotech.internet.dumper.client;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -11,13 +11,15 @@ import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
 import org.quartz.JobBuilder;
 import org.quartz.JobDetail;
+import org.quartz.Scheduler;
+import org.quartz.SchedulerException;
+import org.quartz.SchedulerFactory;
 import org.quartz.SimpleScheduleBuilder;
 import org.quartz.Trigger;
 import org.quartz.TriggerBuilder;
+import org.quartz.impl.StdSchedulerFactory;
 
-import eu.deustotech.internet.dumper.jobmanager.JobManager;
-import eu.deustotech.internet.dumper.jobmanager.JobManagerFactory;
-import eu.deustotech.internet.dumper.jobmanager.jobs.LaunchJob;
+import eu.deustotech.internet.dumper.jobs.LaunchJob;
 import eu.deustotech.internet.dumper.models.Settings;
 import eu.deustotech.internet.dumper.models.Task;
 
@@ -25,14 +27,13 @@ import eu.deustotech.internet.dumper.models.Task;
  * Hello world!
  * 
  */
-public class Main {
+public class Client {
 
 	private static SessionFactory sessionFactory;
 	private static Session session;
 	private static BufferedReader in = new BufferedReader(
 			new InputStreamReader(System.in));
-	private static JobManagerFactory taskManagerFactory = new JobManagerFactory();
-
+	
 	public static void main(String[] args) {
 		sessionFactory = new Configuration().configure() // configures settings
 															// from
@@ -116,7 +117,6 @@ public class Main {
 
 		System.out.println("Bye!");
 		session.close();
-		tearDown();
 		System.exit(0);
 	}
 
@@ -208,20 +208,22 @@ public class Main {
 					.startNow()
 					.withSchedule(
 							SimpleScheduleBuilder.simpleSchedule()
-									.withIntervalInSeconds(15).repeatForever()).build();
+									.withIntervalInMinutes(15).repeatForever()).build();
 
 			job.getJobDataMap().put(LaunchJob.TASK_ID, task.getId());
-			job.getJobDataMap().put(LaunchJob.SESSION, session);
-			JobManager jobManager = taskManagerFactory.getJobManager();
-			jobManager.scheduleJob(job, trigger);
+			
+			SchedulerFactory sf = new StdSchedulerFactory();
+		    Scheduler sched = sf.getScheduler();
+		    
+			sched.scheduleJob(job, trigger);
 
 		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (SchedulerException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 	}
 
-	private static void tearDown() {
-		taskManagerFactory.close();
-	}
 }
