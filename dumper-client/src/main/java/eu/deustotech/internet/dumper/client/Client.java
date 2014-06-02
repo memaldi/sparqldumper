@@ -81,6 +81,7 @@ public class Client {
 		boolean exit = false;
 
 		while (!exit) {
+			session.clear();
 			System.out.println("a) Create a new dump task");
 			System.out.println("b) Delete all tasks");
 			System.out.println("c) Show tasks");
@@ -165,7 +166,6 @@ public class Client {
 	}
 
 	private static void show_tasks() {
-		session.flush();
 		session.beginTransaction();
 		List<Task> task_list = session.createQuery("from Task").list();
 		session.getTransaction().commit();
