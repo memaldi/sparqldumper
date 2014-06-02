@@ -33,7 +33,7 @@ public class Client {
 	private static Session session;
 	private static BufferedReader in = new BufferedReader(
 			new InputStreamReader(System.in));
-	
+
 	public static void main(String[] args) {
 		sessionFactory = new Configuration().configure() // configures settings
 															// from
@@ -82,10 +82,11 @@ public class Client {
 
 		while (!exit) {
 			session.clear();
+			Date date = new Date();
 			System.out.println("a) Create a new dump task");
 			System.out.println("b) Delete all tasks");
 			System.out.println("c) Show tasks");
-			//System.out.println("d) Resume task");
+			// System.out.println("d) Resume task");
 			System.out.println("e) Exit");
 			System.out.print("Select your choice: ");
 			try {
@@ -100,9 +101,9 @@ public class Client {
 				case "c":
 					show_tasks();
 					break;
-				/*case "d":
-					resume_task();
-					break;*/
+				/*
+				 * case "d": resume_task(); break;
+				 */
 				case "e":
 					exit = true;
 					break;
@@ -121,40 +122,25 @@ public class Client {
 		System.exit(0);
 	}
 
-	/*private static void resume_task() {
-		System.out.print("Task id: ");
-		try {
-			String id = in.readLine();
-			Task task = null;
-			task = (Task) session.createQuery(
-					"from Task as task where task.id=" + id).uniqueResult();
-			if (task != null) {
-				if (task.getStatus().equals(Task.PAUSED)) {
-					JobDetail job = JobBuilder
-							.newJob(LaunchJob.class)
-							.withIdentity(
-									"launchJob-" + task.getId().toString(),
-									"dumper").build();
-					Trigger trigger = TriggerBuilder
-							.newTrigger()
-							.withIdentity("trigger-" + task.getId().toString(),
-									"dumper").startNow().build();
-
-					job.getJobDataMap().put(LaunchJob.TASK_ID, task.getId());
-					job.getJobDataMap().put(LaunchJob.SESSION, session);
-					JobManager jobManager = taskManagerFactory.getJobManager();
-					jobManager.scheduleJob(job, trigger);
-				} else {
-					System.out.println("This task is not paused!");
-				}
-			} else {
-				System.out.println("Missing task!");
-			}
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-	}*/
+	/*
+	 * private static void resume_task() { System.out.print("Task id: "); try {
+	 * String id = in.readLine(); Task task = null; task = (Task)
+	 * session.createQuery( "from Task as task where task.id=" +
+	 * id).uniqueResult(); if (task != null) { if
+	 * (task.getStatus().equals(Task.PAUSED)) { JobDetail job = JobBuilder
+	 * .newJob(LaunchJob.class) .withIdentity( "launchJob-" +
+	 * task.getId().toString(), "dumper").build(); Trigger trigger =
+	 * TriggerBuilder .newTrigger() .withIdentity("trigger-" +
+	 * task.getId().toString(), "dumper").startNow().build();
+	 * 
+	 * job.getJobDataMap().put(LaunchJob.TASK_ID, task.getId());
+	 * job.getJobDataMap().put(LaunchJob.SESSION, session); JobManager
+	 * jobManager = taskManagerFactory.getJobManager();
+	 * jobManager.scheduleJob(job, trigger); } else {
+	 * System.out.println("This task is not paused!"); } } else {
+	 * System.out.println("Missing task!"); } } catch (IOException e) { // TODO
+	 * Auto-generated catch block e.printStackTrace(); } }
+	 */
 
 	private static void delete_tasks() {
 		List<Task> taskList = session.createQuery("from Task").list();
@@ -195,7 +181,7 @@ public class Client {
 			task.setOffset((long) 0);
 			task.setStart_time(new Date());
 			task.setStatus(Task.PAUSED);
-			
+
 			session.beginTransaction();
 			session.save(task);
 			session.getTransaction().commit();
@@ -211,13 +197,14 @@ public class Client {
 					.startNow()
 					.withSchedule(
 							SimpleScheduleBuilder.simpleSchedule()
-									.withIntervalInMinutes(15).repeatForever()).build();
+									.withIntervalInMinutes(15).repeatForever())
+					.build();
 
 			job.getJobDataMap().put(LaunchJob.TASK_ID, task.getId());
-			
+
 			SchedulerFactory sf = new StdSchedulerFactory();
-		    Scheduler sched = sf.getScheduler();
-		    
+			Scheduler sched = sf.getScheduler();
+
 			sched.scheduleJob(job, trigger);
 
 		} catch (IOException e) {

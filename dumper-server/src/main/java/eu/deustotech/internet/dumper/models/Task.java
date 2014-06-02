@@ -2,6 +2,7 @@ package eu.deustotech.internet.dumper.models;
 
 import java.util.Date;
 
+import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
@@ -60,7 +61,7 @@ public class Task {
 		this.graph = graph;
 	}
 
-	@Temporal(TemporalType.DATE)
+	@Temporal(TemporalType.TIMESTAMP)
 	public Date getStart_time() {
 		return startTime;
 	}
@@ -69,7 +70,7 @@ public class Task {
 		this.startTime = start_time;
 	}
 
-	@Temporal(TemporalType.DATE)
+	@Temporal(TemporalType.TIMESTAMP)
 	public Date getEnd_time() {
 		return endTime;
 	}
@@ -77,8 +78,8 @@ public class Task {
 	public void setEnd_time(Date end_time) {
 		this.endTime = end_time;
 	}
-
-	@Temporal(TemporalType.DATE)
+	
+	@Temporal(TemporalType.TIMESTAMP)
 	public Date getPaused_since() {
 		return paused_since;
 	}
