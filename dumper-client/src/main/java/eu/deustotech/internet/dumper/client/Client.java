@@ -165,7 +165,10 @@ public class Client {
 	}
 
 	private static void show_tasks() {
+		session.flush();
+		session.beginTransaction();
 		List<Task> task_list = session.createQuery("from Task").list();
+		session.getTransaction().commit();
 		System.out
 				.println("id | SPARQL endpoint | Named graph | Status | Start time | End time | Paused since | Offset");
 		for (Task task : task_list) {
