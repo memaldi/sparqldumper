@@ -17,12 +17,13 @@ import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.quartz.Job;
+import org.quartz.InterruptableJob;
 import org.quartz.JobDataMap;
 import org.quartz.JobExecutionContext;
 import org.quartz.JobExecutionException;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
+import org.quartz.UnableToInterruptJobException;
 
 import virtuoso.jena.driver.VirtGraph;
 
@@ -32,13 +33,16 @@ import com.hp.hpl.jena.graph.Triple;
 import eu.deustotech.internet.dumper.models.Settings;
 import eu.deustotech.internet.dumper.models.Task;
 
-public class LaunchJob implements Job {
+public class LaunchJob implements InterruptableJob {
 
 	public static String TASK_ID = "TASK_ID";
-
+	private boolean interrupted;
+	
 	public void execute(JobExecutionContext context)
 			throws JobExecutionException {
 
+		this.interrupted = false;
+		
 		JobDataMap data = context.getJobDetail().getJobDataMap();
 
 		SessionFactory sessionFactory = new Configuration().configure() // configures settings
@@ -54,7 +58,7 @@ public class LaunchJob implements Job {
 		if (task.getStatus().equals(Task.PAUSED)) {
 
 			session.beginTransaction();
-			task.setStart_time(new Date());
+			//task.setStart_time(new Date());
 			task.setStatus(Task.RUNNING);
 			session.update(task);
 			session.getTransaction().commit();
@@ -84,7 +88,7 @@ public class LaunchJob implements Job {
 					virtUri.toString(), settings.getUser(),
 					settings.getPassword());
 
-			while (!end && !paused) {
+			while (!end && !paused && !this.interrupted) {
 
 				String query = "SELECT DISTINCT * WHERE {?s ?p ?o} LIMIT 1000 OFFSET "
 						+ offset;
@@ -182,5 +186,9 @@ public class LaunchJob implements Job {
 				e.printStackTrace();
 			}
 		}
+	}
+
+	public void interrupt() throws UnableToInterruptJobException {
+		this.interrupted = true;
 	}
 }

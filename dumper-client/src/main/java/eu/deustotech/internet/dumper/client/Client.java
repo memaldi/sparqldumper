@@ -11,6 +11,7 @@ import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
 import org.quartz.JobBuilder;
 import org.quartz.JobDetail;
+import org.quartz.JobKey;
 import org.quartz.Scheduler;
 import org.quartz.SchedulerException;
 import org.quartz.SchedulerFactory;
@@ -18,6 +19,7 @@ import org.quartz.SimpleScheduleBuilder;
 import org.quartz.Trigger;
 import org.quartz.TriggerBuilder;
 import org.quartz.impl.StdSchedulerFactory;
+import org.quartz.impl.matchers.GroupMatcher;
 
 import eu.deustotech.internet.dumper.jobs.LaunchJob;
 import eu.deustotech.internet.dumper.models.Settings;
@@ -34,6 +36,9 @@ public class Client {
 	private static BufferedReader in = new BufferedReader(
 			new InputStreamReader(System.in));
 
+	private static SchedulerFactory sf = new StdSchedulerFactory();
+	
+	
 	public static void main(String[] args) {
 		sessionFactory = new Configuration().configure() // configures settings
 															// from
@@ -82,10 +87,10 @@ public class Client {
 
 		while (!exit) {
 			session.clear();
-			Date date = new Date();
 			System.out.println("a) Create a new dump task");
 			System.out.println("b) Delete all tasks");
 			System.out.println("c) Show tasks");
+			System.out.println("d) Stop task");
 			// System.out.println("d) Resume task");
 			System.out.println("e) Exit");
 			System.out.print("Select your choice: ");
@@ -101,9 +106,10 @@ public class Client {
 				case "c":
 					show_tasks();
 					break;
-				/*
-				 * case "d": resume_task(); break;
-				 */
+				case "d":
+					stop_task();
+					break;
+
 				case "e":
 					exit = true;
 					break;
@@ -122,25 +128,28 @@ public class Client {
 		System.exit(0);
 	}
 
-	/*
-	 * private static void resume_task() { System.out.print("Task id: "); try {
-	 * String id = in.readLine(); Task task = null; task = (Task)
-	 * session.createQuery( "from Task as task where task.id=" +
-	 * id).uniqueResult(); if (task != null) { if
-	 * (task.getStatus().equals(Task.PAUSED)) { JobDetail job = JobBuilder
-	 * .newJob(LaunchJob.class) .withIdentity( "launchJob-" +
-	 * task.getId().toString(), "dumper").build(); Trigger trigger =
-	 * TriggerBuilder .newTrigger() .withIdentity("trigger-" +
-	 * task.getId().toString(), "dumper").startNow().build();
-	 * 
-	 * job.getJobDataMap().put(LaunchJob.TASK_ID, task.getId());
-	 * job.getJobDataMap().put(LaunchJob.SESSION, session); JobManager
-	 * jobManager = taskManagerFactory.getJobManager();
-	 * jobManager.scheduleJob(job, trigger); } else {
-	 * System.out.println("This task is not paused!"); } } else {
-	 * System.out.println("Missing task!"); } } catch (IOException e) { // TODO
-	 * Auto-generated catch block e.printStackTrace(); } }
-	 */
+	private static void stop_task() {
+		try {
+			System.out.print("Job ID: ");
+			String id = in.readLine();
+			Scheduler sched = sf.getScheduler();
+			JobKey jobKey = new JobKey("launchJob-" + id, "dumper");
+			sched.interrupt(jobKey);
+			sched.deleteJob(jobKey);
+			Task task = (Task) session.createQuery("from Task as task where task.id=" + id).uniqueResult();
+			session.beginTransaction();
+			session.delete(task);
+			session.getTransaction().commit();
+		} catch (SchedulerException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	
+		
+	}
 
 	private static void delete_tasks() {
 		List<Task> taskList = session.createQuery("from Task").list();
@@ -202,9 +211,7 @@ public class Client {
 
 			job.getJobDataMap().put(LaunchJob.TASK_ID, task.getId());
 
-			SchedulerFactory sf = new StdSchedulerFactory();
 			Scheduler sched = sf.getScheduler();
-
 			sched.scheduleJob(job, trigger);
 
 		} catch (IOException e) {

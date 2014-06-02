@@ -30,6 +30,7 @@ public class Task {
     private Date paused_since;
     private Long offset;
     private String status;
+    //private jobId;
 
     public Task() {
     }
