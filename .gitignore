@@ -18,3 +18,5 @@ hs_err_pid*
 
 # Maven build folders
 /target
+/dumper-server/target
+/dumper-client/target

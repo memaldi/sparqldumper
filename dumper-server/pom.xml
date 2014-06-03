@@ -3,6 +3,28 @@
   <groupId>eu.deustotech.internet.dumper.server</groupId>
   <artifactId>dumper-server</artifactId>
   <version>0.0.1-SNAPSHOT</version>
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.1</version>
+        <configuration>
+          <source>1.7</source>
+          <target>1.7</target>
+        </configuration>
+      </plugin>
+      <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>1.2.1</version>
+                <configuration>
+                    <mainClass>eu.deustotech.internet.dumper.server.Server</mainClass>
+                </configuration>
+            </plugin>
+
+    </plugins>
+  </build>
   <dependencies>
       <dependency>
 	    <groupId>org.quartz-scheduler</groupId>
