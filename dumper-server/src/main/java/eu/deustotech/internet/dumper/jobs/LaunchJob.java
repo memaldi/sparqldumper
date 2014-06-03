@@ -97,7 +97,8 @@ public class LaunchJob implements InterruptableJob {
             InputStream input = null;
 
             try {
-                input = new FileInputStream("config.properties");
+                //input = new FileInputStream("config.properties");
+                input = getClass().getResourceAsStream("/config.properties");
                 prop.load(input);
             } catch (FileNotFoundException e) {
                 e.printStackTrace();
