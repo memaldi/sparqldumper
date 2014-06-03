@@ -189,6 +189,7 @@ public class LaunchJob implements InterruptableJob {
 
 					response.close();
 				} catch (Exception e) {
+                    e.printStackTrace();
 					task.setPaused_since(new Date());
 					task.setOffset(offset);
 					task.setStatus(Task.PAUSED);
