@@ -15,6 +15,7 @@ public class Server {
 			Logger log = LoggerFactory.getLogger(Server.class);
 			SchedulerFactory sf = new StdSchedulerFactory();
 		    Scheduler sched = sf.getScheduler();
+
 		    log.info("------- Initialization Complete -----------");
 
 		    log.info("------- (Not Scheduling any Jobs - relying on a remote client to schedule jobs --");

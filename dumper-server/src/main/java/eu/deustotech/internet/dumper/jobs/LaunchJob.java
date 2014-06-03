@@ -1,12 +1,15 @@
 package eu.deustotech.internet.dumper.jobs;
 
-import java.io.StringWriter;
+import java.io.*;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Date;
+import java.util.Properties;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpEntity;
+import org.apache.http.HttpHost;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.utils.URIBuilder;
@@ -88,12 +91,32 @@ public class LaunchJob implements InterruptableJob {
 					virtUri.toString(), settings.getUser(),
 					settings.getPassword());
 
+            CloseableHttpClient httpclient = HttpClients.createDefault();
+
+            Properties prop = new Properties();
+            InputStream input = null;
+
+            try {
+                input = new FileInputStream("config.properties");
+                prop.load(input);
+            } catch (FileNotFoundException e) {
+                e.printStackTrace();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            RequestConfig config = RequestConfig.custom().build();
+            if (prop.containsKey("proxy_host") && prop.containsKey("proxy_port") && prop.containsKey("proxy_protocol")) {
+                HttpHost proxy = new HttpHost(prop.getProperty("proxy_host"), Integer.parseInt(prop.getProperty("proxy_port")), prop.getProperty("proxy_protocol"));
+                config = RequestConfig.custom().setProxy(proxy).build();
+            }
+
+
 			while (!end && !paused && !this.interrupted) {
 
 				String query = "SELECT DISTINCT * WHERE {?s ?p ?o} LIMIT 1000 OFFSET "
 						+ offset;
 
-				CloseableHttpClient httpclient = HttpClients.createDefault();
+
 				try {
 					URI uri = new URIBuilder().setScheme("http")
 							.setHost(endpoint.replace("http://", ""))
@@ -101,6 +124,7 @@ public class LaunchJob implements InterruptableJob {
 							.setParameter("output", "json")
 							.setParameter("format", "json").build();
 					HttpGet httpGet = new HttpGet(uri);
+                    httpGet.setConfig(config);
 					CloseableHttpResponse response = httpclient
 							.execute(httpGet);
 
