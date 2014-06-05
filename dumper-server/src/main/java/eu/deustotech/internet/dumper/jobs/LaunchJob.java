@@ -200,6 +200,10 @@ public class LaunchJob implements InterruptableJob {
 					session.getTransaction().commit();
 				}
 				offset += 1000;
+                session.beginTransaction();
+                task.setOffset(offset);
+                session.update(task);
+                session.getTransaction().commit();
 			}
 			graph.close();
 
