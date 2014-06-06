@@ -20,14 +20,9 @@ import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
 import org.json.JSONArray;
 import org.json.JSONObject;
-import org.quartz.InterruptableJob;
-import org.quartz.JobDataMap;
-import org.quartz.JobExecutionContext;
-import org.quartz.JobExecutionException;
-import org.quartz.Scheduler;
-import org.quartz.SchedulerException;
-import org.quartz.UnableToInterruptJobException;
+import org.quartz.*;
 
+import redis.clients.jedis.Jedis;
 import virtuoso.jena.driver.VirtGraph;
 
 import com.hp.hpl.jena.graph.Node;
@@ -52,17 +47,22 @@ public class LaunchJob implements InterruptableJob {
 				// from
 				// hibernate.cfg.xml
 				.buildSessionFactory();
-
 		Session session = sessionFactory.openSession();
 
-		Task task = (Task) session.createQuery(
+        Jedis jedis = new Jedis("localhost");
+
+        Task task = (Task) session.createQuery(
 				"from Task as task where task.id=" + data.getLong(TASK_ID))
 				.uniqueResult();
-		if (task.getStatus().equals(Task.PAUSED)) {
+
+
+
+        if (jedis.get("dumper:job:" + task.getId()).equals(Task.PAUSED)) {
 
 			session.beginTransaction();
 			//task.setStart_time(new Date());
-			task.setStatus(Task.RUNNING);
+			//task.setStatus(Task.RUNNING);
+            jedis.set("dumper:job:" + task.getId(), Task.RUNNING);
 			session.update(task);
 			session.getTransaction().commit();
 			session.flush();
@@ -169,19 +169,22 @@ public class LaunchJob implements InterruptableJob {
 							} else {
 								end = true;
 								task.setEnd_time(new Date());
-								task.setStatus(Task.DONE);
+								//task.setStatus(Task.DONE);
+                                jedis.set("dumper:job:" + task.getId(), Task.DONE);
 								session.beginTransaction();
 								session.update(task);
 								session.getTransaction().commit();
 							}
 						} catch (Exception e) {
+                            jedis.set("dumper:job:" + task.getId(), Task.PAUSED);
 							response.close();
 							throw new Exception();
 						}
 					} else {
 						task.setPaused_since(new Date());
 						task.setOffset(offset);
-						task.setStatus(Task.PAUSED);
+						//task.setStatus(Task.PAUSED);
+                        jedis.set("dumper:job:" + task.getId(), Task.PAUSED);
 						paused = true;
 						session.beginTransaction();
 						session.update(task);
@@ -193,7 +196,8 @@ public class LaunchJob implements InterruptableJob {
                     e.printStackTrace();
 					task.setPaused_since(new Date());
 					task.setOffset(offset);
-					task.setStatus(Task.PAUSED);
+					//task.setStatus(Task.PAUSED);
+                    jedis.set("dumper:job:" + task.getId(), Task.PAUSED);
 					paused = true;
 					session.beginTransaction();
 					session.update(task);
@@ -207,7 +211,7 @@ public class LaunchJob implements InterruptableJob {
 			}
 			graph.close();
 
-		} else if (task.getStatus().equals(Task.DONE)) {
+		} else if (jedis.get("dumper:job:" + task.getId()).equals(Task.DONE)) {
 			Scheduler scheduler = context.getScheduler();
 			try {
 				scheduler.deleteJob(context.getJobDetail().getKey());

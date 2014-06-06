@@ -24,6 +24,7 @@ import org.quartz.impl.matchers.GroupMatcher;
 import eu.deustotech.internet.dumper.jobs.LaunchJob;
 import eu.deustotech.internet.dumper.models.Settings;
 import eu.deustotech.internet.dumper.models.Task;
+import redis.clients.jedis.Jedis;
 
 /**
  * Hello world!
@@ -37,9 +38,10 @@ public class Client {
 			new InputStreamReader(System.in));
 
 	private static SchedulerFactory sf = new StdSchedulerFactory();
-	
-	
-	public static void main(String[] args) {
+    private static Jedis jedis = new Jedis("localhost");
+
+
+    public static void main(String[] args) {
 		sessionFactory = new Configuration().configure() // configures settings
 															// from
 															// hibernate.cfg.xml
@@ -169,7 +171,7 @@ public class Client {
 		for (Task task : task_list) {
 			System.out.format("%s | %s | %s | %s | %s | %s | %s | %s", task
 					.getId().toString(), task.getEndpoint(), task.getGraph(),
-					task.getStatus(), task.getStart_time(), task.getEnd_time(),
+					jedis.get("dumper:job:" + task.getId()), task.getStart_time(), task.getEnd_time(),
 					task.getPaused_since(), task.getOffset().toString());
 			System.out.println();
 		}
@@ -189,11 +191,14 @@ public class Client {
 			task.setGraph(graph);
 			task.setOffset((long) 0);
 			task.setStart_time(new Date());
-			task.setStatus(Task.PAUSED);
+			//task.setStatus(Task.PAUSED);
+
 
 			session.beginTransaction();
 			session.save(task);
 			session.getTransaction().commit();
+
+            jedis.set("dumper:job:" + task.getId(), Task.PAUSED);
 
 			JobDetail job = JobBuilder
 					.newJob(LaunchJob.class)
