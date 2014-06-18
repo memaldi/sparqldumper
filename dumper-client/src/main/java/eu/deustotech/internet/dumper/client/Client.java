@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
@@ -93,8 +94,8 @@ public class Client {
 			System.out.println("b) Delete all tasks");
 			System.out.println("c) Show tasks");
 			System.out.println("d) Stop task");
-			// System.out.println("d) Resume task");
-			System.out.println("e) Exit");
+			System.out.println("e) Resume tasks");
+			System.out.println("f) Exit");
 			System.out.print("Select your choice: ");
 			try {
 				String option = in.readLine();
@@ -111,8 +112,10 @@ public class Client {
 				case "d":
 					stop_task();
 					break;
-
-				case "e":
+                case "e":
+                    resume_tasks();
+                    break;
+				case "f":
 					exit = true;
 					break;
 				default:
@@ -130,7 +133,41 @@ public class Client {
 		System.exit(0);
 	}
 
-	private static void stop_task() {
+    private static void resume_tasks() {
+        Set<String> keySet = jedis.keys("job:dumper:*");
+
+        for (String key : keySet) {
+            String status = jedis.get(key);
+            if (status.equals(Task.PAUSED)) {
+                String taskId = key.split(":")[2];
+                JobDetail job = JobBuilder
+                        .newJob(LaunchJob.class)
+                        .withIdentity("launchJob-" + taskId,
+                                "dumper").build();
+                Trigger trigger = TriggerBuilder
+                        .newTrigger()
+                        .withIdentity("trigger-" + taskId,
+                                "dumper")
+                        .startNow()
+                        .withSchedule(
+                                SimpleScheduleBuilder.simpleSchedule()
+                                        .withIntervalInMinutes(15).repeatForever())
+                        .build();
+
+                job.getJobDataMap().put(LaunchJob.TASK_ID, taskId);
+
+                Scheduler sched = null;
+                try {
+                    sched = sf.getScheduler();
+                    sched.scheduleJob(job, trigger);
+                } catch (SchedulerException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+    private static void stop_task() {
 		try {
 			System.out.print("Job ID: ");
 			String id = in.readLine();
