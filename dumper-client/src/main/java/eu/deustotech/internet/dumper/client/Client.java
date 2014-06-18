@@ -1,5 +1,15 @@
 package eu.deustotech.internet.dumper.client;
 
+import eu.deustotech.internet.dumper.jobs.LaunchJob;
+import eu.deustotech.internet.dumper.models.Settings;
+import eu.deustotech.internet.dumper.models.Task;
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.cfg.Configuration;
+import org.quartz.*;
+import org.quartz.impl.StdSchedulerFactory;
+import redis.clients.jedis.Jedis;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -7,26 +17,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Set;
 import java.util.logging.Logger;
-
-import org.hibernate.Session;
-import org.hibernate.SessionFactory;
-import org.hibernate.cfg.Configuration;
-import org.quartz.JobBuilder;
-import org.quartz.JobDetail;
-import org.quartz.JobKey;
-import org.quartz.Scheduler;
-import org.quartz.SchedulerException;
-import org.quartz.SchedulerFactory;
-import org.quartz.SimpleScheduleBuilder;
-import org.quartz.Trigger;
-import org.quartz.TriggerBuilder;
-import org.quartz.impl.StdSchedulerFactory;
-import org.quartz.impl.matchers.GroupMatcher;
-
-import eu.deustotech.internet.dumper.jobs.LaunchJob;
-import eu.deustotech.internet.dumper.models.Settings;
-import eu.deustotech.internet.dumper.models.Task;
-import redis.clients.jedis.Jedis;
 
 /**
  * Hello world!

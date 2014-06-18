@@ -182,11 +182,13 @@ public class LaunchJob implements InterruptableJob {
 								session.getTransaction().commit();
 							}
 						} catch (Exception e) {
+                            e.printStackTrace();
                             jedis.set("dumper:job:" + task.getId(), Task.PAUSED);
 							response.close();
 							throw new Exception();
 						}
 					} else {
+                        logger.info("Status msg != 200");
 						task.setPaused_since(new Date());
 						task.setOffset(offset);
 						//task.setStatus(Task.PAUSED);
