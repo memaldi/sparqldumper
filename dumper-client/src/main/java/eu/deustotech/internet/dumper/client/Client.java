@@ -134,7 +134,7 @@ public class Client {
 	}
 
     private static void resume_tasks() {
-        Set<String> keySet = jedis.keys("job:dumper:*");
+        Set<String> keySet = jedis.keys("dumper:job:*");
 
         for (String key : keySet) {
             String status = jedis.get(key);
