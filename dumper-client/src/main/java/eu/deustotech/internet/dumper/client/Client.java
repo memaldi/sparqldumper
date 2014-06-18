@@ -6,6 +6,7 @@ import java.io.InputStreamReader;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
+import java.util.logging.Logger;
 
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
@@ -134,12 +135,14 @@ public class Client {
 	}
 
     private static void resume_tasks() {
+        Logger logger = Logger.getLogger(Client.class.getName());
         Set<String> keySet = jedis.keys("dumper:job:*");
 
         for (String key : keySet) {
             String status = jedis.get(key);
             if (status.equals(Task.PAUSED)) {
                 String taskId = key.split(":")[2];
+                logger.info(String.format("Relaunching task %s", taskId));
                 JobDetail job = JobBuilder
                         .newJob(LaunchJob.class)
                         .withIdentity("launchJob-" + taskId,

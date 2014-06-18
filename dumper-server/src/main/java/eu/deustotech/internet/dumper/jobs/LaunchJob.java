@@ -5,6 +5,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Date;
 import java.util.Properties;
+import java.util.logging.Logger;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpEntity;
@@ -40,8 +41,11 @@ public class LaunchJob implements InterruptableJob {
 			throws JobExecutionException {
 
 		this.interrupted = false;
-		
+
 		JobDataMap data = context.getJobDetail().getJobDataMap();
+
+        Logger logger = Logger.getLogger(this.getClass().getName());
+        logger.info(String.format("Checking task with id %s", Long.toString(data.getLong(TASK_ID))));
 
 		SessionFactory sessionFactory = new Configuration().configure() // configures settings
 				// from
@@ -59,13 +63,14 @@ public class LaunchJob implements InterruptableJob {
 
         if (jedis.get("dumper:job:" + task.getId()).equals(Task.PAUSED)) {
 
-			session.beginTransaction();
+            logger.info(String.format("Relaunching task %s", Long.toString(data.getLong(TASK_ID))));
+			//session.beginTransaction();
 			//task.setStart_time(new Date());
 			//task.setStatus(Task.RUNNING);
             jedis.set("dumper:job:" + task.getId(), Task.RUNNING);
-			session.update(task);
-			session.getTransaction().commit();
-			session.flush();
+			//session.update(task);
+			//session.getTransaction().commit();
+			//session.flush();
 			
 			Settings settings = (Settings) session.createQuery("from Settings")
 					.list().get(0);
