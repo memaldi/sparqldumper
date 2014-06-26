@@ -120,7 +120,7 @@ public class LaunchJob implements InterruptableJob {
 
 			while (!end && !paused && !this.interrupted) {
 
-				String query = "SELECT DISTINCT * WHERE {?s ?p ?o} LIMIT 1000 OFFSET "
+				String query = "SELECT DISTINCT ?s ?p ?o WHERE {?s ?p ?o} ORDER BY ?s LIMIT 1000 OFFSET "
 						+ offset;
 
 
